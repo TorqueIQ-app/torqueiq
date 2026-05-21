@@ -2414,15 +2414,6 @@ async function runAIQuery() {
     }, 1200);
   } else {
     // Live Claude API — wired in Section 4
-    const apiKey = localStorage.getItem('torqueiq-api-key');
-    if (!apiKey) {
-      document.getElementById('ai-key-card').style.display = 'block';
-      btn.disabled        = false;
-      btn.textContent     = '⚡ Get Answer';
-      statusEl.textContent = '';
-      showToast('Enter your API key first', 'error');
-      return;
-    }
     try {
       const specs = await callClaudeAPI(vehicle, query, normalizedQuery);
       renderAIResult(vehicle, query, specs);
