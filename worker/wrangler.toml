@@ -1,0 +1,29 @@
+# TorqueIQ — Cloudflare Worker
+# Deploy:  wrangler deploy
+# Secret:  wrangler secret put ANTHROPIC_API_KEY
+
+name               = "torqueiq-proxy"
+main               = "index.js"
+compatibility_date = "2024-09-23"
+
+# ── Non-secret config vars ────────────────────────────────────────────────────
+# Update ALLOWED_ORIGIN to your actual GitHub Pages URL before deploying.
+# Format: "https://YOUR-USERNAME.github.io"  (no trailing slash)
+[vars]
+ALLOWED_ORIGIN = "https://torqueiq-app.github.io"
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+# Workers Rate Limiting API — 10 requests per IP per 60-second window.
+# namespace_id is an arbitrary integer; use a different one per rate limiter
+# if you add more in the future.
+# Requires Cloudflare Workers Paid plan or the Rate Limiting add-on.
+# If not on a paid plan, comment this block out and remove the
+# env.RATE_LIMITER.limit() call in index.js.
+[[unsafe.bindings]]
+name         = "RATE_LIMITER"
+type         = "ratelimit"
+namespace_id = "1001"
+simple       = { limit = 10, period = 60 }
+
+# ── Secrets (never put values here — use the CLI) ────────────────────────────
+# wrangler secret put ANTHROPIC_API_KEY
