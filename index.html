@@ -1287,7 +1287,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
             <button class="btn btn-secondary btn-sm quick-q" onclick="setAIQuery(this)">Transmission Fluid</button>
             <button class="btn btn-secondary btn-sm quick-q" onclick="setAIQuery(this)">Brake Fluid Type</button>
             <button class="btn btn-secondary btn-sm quick-q" onclick="setAIQuery(this)">Torque Specs</button>
-            <button class="btn btn-secondary btn-sm quick-q" onclick="setAIQuery(this)">Timing Belt or Chain?</button>
+            <button class="btn btn-secondary btn-sm quick-q" onclick="setAIQuery(this)">Timing: Belt or Chain</button>
           </div>
 
           <div class="form-group" style="margin-bottom:14px;">
@@ -2486,18 +2486,62 @@ async function callClaudeAPI(vehicle, originalQuery, normalizedQuery) {
   const vehicleCtx = [vehicle.year, vehicle.make, vehicle.model, vehicle.engine]
     .filter(Boolean).join(' · ');
 
-  const systemPrompt =
-`You are TorqueIQ Vehicle Intelligence. You return precise factory specifications for the exact vehicle provided.
+  const queryPrompts = {
+    'oil': `You are TorqueIQ Vehicle Intelligence. Return oil specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Oil Viscosity, Oil Capacity, Change Interval, Oil Filter Part Number.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
 
-STRICT OUTPUT RULES:
-1. Return ONLY a structured spec list — no prose, no explanations, no chat text.
-2. Every line must follow this exact format:  Spec Name: Value
-3. If a value is estimated, approximate, or not confirmed for this exact configuration, append [EST] to the value:  Spec Name: Value [EST]
-4. Never approximate from similar vehicles or different model years.
-5. If a specific value is not available for this exact vehicle, write:  Spec Name: Not available in verified dataset
-6. Maximum 5 specification lines per response.
-7. Spec names in Title Case. Values concise and precise, include units.
-8. Output only lines in "Spec Name: Value" format — nothing else, no headers, no notes.`;
+    'spark plugs': `You are TorqueIQ Vehicle Intelligence. Return spark plug specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Plug Gap, Plug Type, Install Torque, Replace Interval, OEM Part Number.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'tire pressure': `You are TorqueIQ Vehicle Intelligence. Return tire pressure specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Front PSI, Rear PSI, Spare PSI, Recommended Tire Size.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'coolant': `You are TorqueIQ Vehicle Intelligence. Return coolant specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Coolant Type, Coolant Color, System Capacity, Mix Ratio, Change Interval.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'transmission fluid': `You are TorqueIQ Vehicle Intelligence. Return transmission fluid specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Fluid Type, Fluid Capacity, Change Interval, Transmission Type.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'brake fluid': `You are TorqueIQ Vehicle Intelligence. Return brake fluid specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Fluid Type, DOT Rating, Change Interval, Dry Boiling Point.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'torque specs': `You are TorqueIQ Vehicle Intelligence. Return torque specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Lug Nut Torque, Spark Plug Torque, Oil Drain Plug Torque, Wheel Bolt Pattern.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'timing': `You are TorqueIQ Vehicle Intelligence. Return timing system information for the exact vehicle provided.
+RULES: You MUST definitively state Chain or Belt — never return ? or unknown.
+Always return ALL of these specs: Timing Type, Replacement Required, Replacement Interval, Tensioner Service.
+If you are not certain, make your best determination based on the engine family and append [EST].
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'lug nut torque': `You are TorqueIQ Vehicle Intelligence. Return lug nut and wheel specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Lug Nut Torque, Socket Size, Thread Pitch, Seat Type, Bolt Pattern.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+
+    'battery': `You are TorqueIQ Vehicle Intelligence. Return battery specifications for the exact vehicle provided.
+RULES: Always return ALL of these specs: Group Size, Cold Cranking Amps, Reserve Capacity, Voltage, Terminal Type.
+Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`,
+  };
+
+  const systemPrompt = queryPrompts[normalizedQuery] || `You are TorqueIQ Vehicle Intelligence. Return vehicle specifications for the exact vehicle provided.
+RULES: Return 4-6 relevant specs. Never return ? or unknown. If not 100% confirmed, append [EST] to the value.
+Format: Spec Name: Value (one per line, no prose, no headers)`;
 
   const userMessage = `Vehicle: ${vehicleCtx}\nQuestion: ${originalQuery}`;
 
@@ -2506,7 +2550,7 @@ STRICT OUTPUT RULES:
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model:      'claude-sonnet-4-6',
-      max_tokens: 300,
+      max_tokens: 500,
       system:     systemPrompt,
       messages:   [{ role:'user', content:userMessage }],
     }),
@@ -2584,6 +2628,31 @@ function renderAIResult(vehicle, query, specs) {
   const card = document.getElementById('ai-result-card');
   card.style.display = 'block';
   setTimeout(() => card.scrollIntoView({ behavior:'smooth', block:'nearest' }), 50);
+
+  const followUps = {
+    'oil':                ['Oil Filter Part Number','Oil Drain Plug Torque','Engine Air Filter Interval'],
+    'spark plugs':        ['Ignition Coil Part Number','Timing Belt or Chain','Oil Change Interval'],
+    'tire pressure':      ['Lug Nut Torque','Wheel Bolt Pattern','Brake Fluid Type'],
+    'coolant':            ['Thermostat Temperature','Water Pump Interval','Radiator Cap Pressure'],
+    'transmission fluid': ['Differential Fluid','Transfer Case Fluid','Transmission Filter Interval'],
+    'brake fluid':        ['Brake Pad Thickness Minimum','Rotor Thickness Minimum','Caliper Bolt Torque'],
+    'torque specs':       ['Spark Plug Gap','Timing Belt or Chain','Oil Change Interval'],
+    'timing':             ['Water Pump Interval','Serpentine Belt Interval','Oil Change Interval'],
+    'lug nut torque':     ['Tire Pressure','Wheel Bolt Pattern','Brake Fluid Type'],
+    'battery':            ['Alternator Output','Starter Current Draw','Ground Cable Size'],
+  };
+
+  const suggestions = followUps[normalizeQ(query)];
+  if (suggestions) {
+    const existing = document.getElementById('ai-followup-row');
+    if (existing) existing.remove();
+    const row = document.createElement('div');
+    row.id = 'ai-followup-row';
+    row.style.cssText = 'margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;';
+    row.innerHTML = '<div style="width:100%;font-size:10px;letter-spacing:1.5px;color:var(--text-muted);font-family:var(--font-display);margin-bottom:4px;">NEXT QUESTIONS</div>' +
+      suggestions.map(s => `<button class="btn btn-secondary btn-sm quick-q" onclick="setAIQuery(this);document.getElementById('ai-query-card').scrollIntoView({behavior:'smooth'});">${escHtml(s)}</button>`).join('');
+    document.getElementById('ai-result-body').appendChild(row);
+  }
 }
 </script>
 
