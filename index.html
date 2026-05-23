@@ -968,6 +968,9 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
   color: var(--text-muted);
 }
 
+#modal-terms .modal-overlay { z-index: 1100; }
+#modal-terms { z-index: 1100; }
+
 .ai-key-row {
   display: flex;
   gap: 10px;
@@ -2259,7 +2262,20 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
  
-document.addEventListener('DOMContentLoaded',()=>{loadData();renderDashboard();});
+document.addEventListener('DOMContentLoaded',()=>{loadData();renderDashboard();checkTerms();});
+
+function checkTerms() {
+  if (!localStorage.getItem('torqueiq-terms-accepted')) {
+    document.body.style.overflow = 'hidden';
+    openModal('modal-terms');
+  }
+}
+
+function acceptTerms() {
+  localStorage.setItem('torqueiq-terms-accepted', '1');
+  document.body.style.overflow = '';
+  closeModal('modal-terms');
+}
 
 /* ═══════════════════════════════════════════════
    SECTION 3 — AI INTELLIGENCE
@@ -2565,5 +2581,35 @@ function renderAIResult(vehicle, query, specs) {
   setTimeout(() => card.scrollIntoView({ behavior:'smooth', block:'nearest' }), 50);
 }
 </script>
+
+<!-- TERMS MODAL -->
+<div class="modal-overlay" id="modal-terms">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">📄 Terms of Use</div>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
+        Before using TorqueIQ, please read and agree to the following:
+      </p>
+      <div class="terms-body" style="font-size:12px;">
+        TorqueIQ provides vehicle specification data and tracking tools for personal informational reference only.
+        By using this app you agree that: (1) TorqueIQ and its operators are not liable for any damage, injury,
+        property loss, or financial loss resulting from reliance on this information; (2) all specifications should
+        be independently verified with your vehicle's owner's manual or a licensed technician before performing
+        any service or modification; (3) AI-generated content may contain errors and is not a substitute for
+        professional automotive advice; (4) this app is for personal use only and may not be used for commercial
+        purposes; (5) your vehicle data is stored locally in your browser and is not transmitted to any server
+        except when using the AI Intelligence feature, which sends vehicle details and your query to Anthropic
+        via a secure proxy.
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:center;">
+      <button class="btn btn-primary" style="min-width:200px;padding:14px 24px;font-size:14px;" onclick="acceptTerms()">
+        I Agree — Enter TorqueIQ
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
