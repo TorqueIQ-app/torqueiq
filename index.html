@@ -2746,6 +2746,13 @@ function submitWaitlist() {
   existing.push(safe);
   localStorage.setItem('torqueiq-waitlist', JSON.stringify(existing));
 
+  // Fire-and-forget — sync to worker KV, don't block UI
+  fetch('https://torqueiq-proxy.torqueiq.workers.dev/waitlist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: raw, timestamp: new Date().toISOString() }),
+  }).catch(() => {});
+
   showToast("You're on the list! We'll notify you when Pro launches.", 'success');
   closeModal('modal-waitlist');
 }
