@@ -2,7 +2,8 @@
  * TorqueIQ — Cloudflare Worker API Proxy
  *
  * Routes
- *   POST /api/chat  →  https://api.anthropic.com/v1/messages
+ *   POST /api/chat   →  https://api.anthropic.com/v1/messages
+ *   POST /waitlist   →  stores email to WAITLIST_KV
  *
  * Secrets  (set via: wrangler secret put ANTHROPIC_API_KEY)
  *   ANTHROPIC_API_KEY
@@ -12,6 +13,7 @@
  *
  * Bindings
  *   RATE_LIMITER     ratelimit — 10 req / 60 s per IP
+ *   WAITLIST_KV      KV namespace — stores waitlist emails
  */
 
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
@@ -91,6 +93,31 @@ export default {
     }
 
     const cors = corsHeaders(allowedOrigin);
+
+    // ── POST /waitlist ─────────────────────────────────────────────────────
+    if (url.pathname === '/waitlist' && request.method === 'POST') {
+      let wlBody;
+      try {
+        wlBody = await request.json();
+      } catch {
+        return jsonResponse({ success: false, error: 'Invalid JSON body' }, 400, cors);
+      }
+
+      const { email, timestamp } = wlBody;
+
+      if (!email || typeof email !== 'string' || !email.trim()) {
+        return jsonResponse({ success: false, error: 'email is required' }, 400, cors);
+      }
+
+      try {
+        const key   = `email:${email.trim()}`;
+        const value = JSON.stringify({ email: email.trim(), timestamp, source: 'pro-gate' });
+        await env.WAITLIST_KV.put(key, value);
+        return jsonResponse({ success: true }, 200, cors);
+      } catch {
+        return jsonResponse({ success: false, error: 'Failed to save to waitlist' }, 500, cors);
+      }
+    }
 
     // ── Route guard ────────────────────────────────────────────────────────
     if (url.pathname !== '/api/chat' || request.method !== 'POST') {

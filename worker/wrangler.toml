@@ -27,3 +27,8 @@ simple       = { limit = 10, period = 60 }
 
 # ── Secrets (never put values here — use the CLI) ────────────────────────────
 # wrangler secret put ANTHROPIC_API_KEY
+
+# ── KV Namespaces ─────────────────────────────────────────────────────────────
+[[kv_namespaces]]
+binding = "WAITLIST_KV"
+id      = "44ff450072f94521bd2949b159118cc6"
